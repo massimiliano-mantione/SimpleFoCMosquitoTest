@@ -33,6 +33,9 @@ float target_velocity = 5.0;
 // MagneticSensorPWM sensor = MagneticSensorPWM(SENSOR1_PWM, 20, 976);  // don't use this, it's very noisy on PWM
 // void doPWM(){sensor.handlePWM();}
 
+//loop delay debug print command variables
+uint32_t txDlyPrint = 100; // milli-seconds print delay counter
+uint32_t lastprint = 0; // temp delay counter variable
 HardwareSerial serial(serial1_rx_pin, serial1_tx_pin);
 
 void serialLoop() {
@@ -56,22 +59,25 @@ void setup() {
   
   serial.begin(115200);
   serial.println("Starting setup");
+  SimpleFOCDebug::enable();
   _delay(500);
+
   driver.voltage_power_supply = 12;
   driver.pwm_frequency = 20000;
   driver.init();
+
   motor.linkDriver(&driver);
   motor.voltage_limit = 4; // [V]
   motor.velocity_limit = 1000; // [rad/s] ~191rpm
-  motor.torque_controller  = TorqueControlType::voltage;
 
+  // motor.torque_controller  = TorqueControlType::voltage;
   // motor.PID_velocity.P = 0.02;  // 0.02
   // motor.PID_velocity.I = 0.2;  // 0.1
   // motor.PID_velocity.D = 0.0001;
   // motor.PID_velocity.output_ramp = 300;
   // motor.LPF_velocity.Tf = 0.05;  // 50ms low pass filter
+  // motor.current_limit = 1;
   motor.controller = MotionControlType::velocity_openloop;
-  motor.current_limit = 1;
 
   // for PWM sensor:
   // sensor.init();
@@ -86,10 +92,10 @@ void setup() {
   serial.println("Setup complete");
 
   motor.init();
-  motor.initFOC();  // to get the two parameters below
+  // motor.initFOC();  // to get the two parameters below
   // motor.initFOC(5.89, Direction::CW); 
 
-  serial.println("FOC Init complete");
+  serial.println("Motor Init complete");
 
   //rtt.println(motor.zero_electric_angle);
   //rtt.println(motor.sensor_direction);
@@ -98,11 +104,15 @@ void setup() {
 
 void loop() {
   //motor.PID_velocity.P = target;
+  if (millis() / txDlyPrint > lastprint) {
+    // send every txDlyPrin
+    lastprint = millis() / txDlyPrint;
+    // display something to the terminal
+    serial.println("Motor monitor");
+    motor.monitor();
+  }
 
-  motor.loopFOC();
   motor.move(target_velocity);
 
-  motor.monitor();
   serialLoop();
 }
-////////////////////

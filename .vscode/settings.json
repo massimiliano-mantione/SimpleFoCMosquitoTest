@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "peripheralpins.h": "c"
+        "peripheralpins.h": "c",
+        "functional": "cpp"
     }
 }
