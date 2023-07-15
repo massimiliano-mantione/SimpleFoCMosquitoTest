@@ -26,8 +26,8 @@ BLDCDriver3PWM driver = BLDCDriver3PWM(PWM1, PWM2, PWM3, DRVENABLE); //STM32G031
 float target_velocity = 5.0;
 
 #define SENSOR1_CS PA4 // some digital pin that you're using as the nCS pin
-//SPIClass spi1(PA7, PA6, PA5);
-//MagneticSensorSC60228 sensor(SENSOR1_CS, 2048);
+SPIClass spi1(PA7, PA6, PA5);
+MagneticSensorSC60228 sensor(SENSOR1_CS, 2048);
 
 // #define SENSOR1_PWM PC6
 // MagneticSensorPWM sensor = MagneticSensorPWM(SENSOR1_PWM, 20, 976);  // don't use this, it's very noisy on PWM
@@ -84,10 +84,10 @@ void setup() {
   // sensor.enableInterrupt(doPWM);
 
   // SPI sensor interface:
-  // sensor.init(&spi1);
+  sensor.init(&spi1);
 
   motor.useMonitoring(serial);
-  // motor.linkSensor(&sensor);
+  motor.linkSensor(&sensor);
 
   serial.println("Setup complete");
 
@@ -108,7 +108,10 @@ void loop() {
     // send every txDlyPrin
     lastprint = millis() / txDlyPrint;
     // display something to the terminal
-    serial.println("Motor monitor");
+    float angle = sensor.getSensorAngle();
+    serial.print("Sensor angle: ");
+    serial.print(angle);
+    serial.println("");
     motor.monitor();
   }
 
