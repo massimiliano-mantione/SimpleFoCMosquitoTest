@@ -6,6 +6,7 @@
 #include <SimpleFOC.h>
 #include <RTTStream.h>
 #include <SPI.h>
+#include <Wire.h>
 #include <SimpleFOCDrivers.h>
 #include <encoders/sc60228/MagneticSensorSC60228.h>
 
@@ -25,6 +26,23 @@ BLDCMotor motor = BLDCMotor(6);
 BLDCDriver3PWM driver = BLDCDriver3PWM(PWM1, PWM2, PWM3, DRVENABLE); //STM32G031K8Ux + MOSQUITO
 float target_velocity = 5.0;
 
+// PA7 SPI1_MOSI/I2S1_SD, TIM3_CH2, TIM1_CH1N, TIM14_CH1, TIM17_CH1
+// PA6 SPI1_MISO/I2S1_MCK, TIM3_CH1, TIM1_BK, TIM16_CH1, LPUART1_CTS
+// PA5 SPI1_SCK/I2S1_CK, TIM2_CH1_ETR, LPTIM2_ETR, EVENTOUT
+// PA4 SPI1_NSS/I2S1_WS, SPI2_MOSI, TIM14_CH1, LPTIM2_OUT, EVENTOUT
+
+// PB6 SPI2_MISO (USART1_TX, TIM1_CH3, TIM16_CH1N, SPI2_MISO, LPTIM1_ETR, I2C1_SCL, EVENTOUT)
+// PB7 SPI2_MOSI (USART1_RX, SPI2_MOSI, TIM17_CH1N, LPTIM1_IN2, I2C1_SDA, EVENTOUT)
+// PB8 SPI2_SCK SPI2_SCK, TIM16_CH1, I2C1_SCL, EVENTOUT)
+// PB0 SPI1_NSS (SPI1_NSS/I2S1_WS, TIM3_CH3, TIM1_CH2N, LPTIM1_OUT)
+
+// SPI2_NSS: PB12 PA8 PD0 PB9 
+
+// I2C1_SCL PB6 PB8
+// I2C1_SDA PB7
+
+//SPIClass spi0(PB6, PB7, PB8);
+
 #define SENSOR1_CS PA4 // some digital pin that you're using as the nCS pin
 SPIClass spi1(PA7, PA6, PA5);
 MagneticSensorSC60228 sensor(SENSOR1_CS, 2048);
@@ -37,6 +55,11 @@ MagneticSensorSC60228 sensor(SENSOR1_CS, 2048);
 uint32_t txDlyPrint = 100; // milli-seconds print delay counter
 uint32_t lastprint = 0; // temp delay counter variable
 HardwareSerial serial(serial1_rx_pin, serial1_tx_pin);
+
+TwoWire commander_I2C = TwoWire(PB7, PB6);
+
+Commander commander = Commander(serial);
+void onMotor(char* cmd){commander.motor(&motor, cmd);}
 
 void serialLoop() {
   static String rx;
@@ -56,6 +79,11 @@ void setup() {
   pinMode(DRVFAULT, INPUT); // Fault pin
   pinMode(DRVRESET, OUTPUT); // Reset pin
   digitalWrite(DRVRESET, HIGH); // Default low
+
+  pinMode(PB6, INPUT);
+  pinMode(PB7, INPUT);
+  pinMode(PB8, INPUT);
+  pinMode(PB0, INPUT);
   
   serial.begin(115200);
   serial.println("Starting setup");
@@ -78,6 +106,9 @@ void setup() {
   // motor.LPF_velocity.Tf = 0.05;  // 50ms low pass filter
   // motor.current_limit = 1;
   motor.controller = MotionControlType::velocity_openloop;
+
+  // Enable motor commander
+  commander.add('m',onMotor,"my motor");
 
   // for PWM sensor:
   // sensor.init();
@@ -112,6 +143,21 @@ void loop() {
     serial.print("Sensor angle: ");
     serial.print(angle);
     serial.println("");
+
+    int pb6 = digitalRead(PB6);
+    int pb7 = digitalRead(PB7);
+    int pb8 = digitalRead(PB8);
+    int pb0 = digitalRead(PB0);
+    serial.print("PINS ");
+    serial.print(pb6);
+    serial.print(" ");
+    serial.print(pb7);
+    serial.print(" ");
+    serial.print(pb8);
+    serial.print(" ");
+    serial.print(pb0);
+    serial.println();
+
     motor.monitor();
   }
 
